@@ -162,9 +162,12 @@ def dai_video_feed_gen():
 
       while True:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
-        cv_frame = inRgb.getCvFrame()
-        print(f'TODO return cv_frame={cv_frame}')
+        cv_img = inRgb.getCvFrame()
 
+        cv_img = cv2.resize(cv_img, (480, 320))
+        frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
+        frame_packet = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'+frame+b'\r\n'
+        await response.write(frame_packet)
 
     return response
 
