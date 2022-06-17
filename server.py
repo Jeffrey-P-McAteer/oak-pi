@@ -112,18 +112,63 @@ def frames(path):
 def video_feed_gen(video_device='/dev/video0'):
 
   async def video_feed(request):
-      response = aiohttp.web.StreamResponse()
-      response.content_type = 'multipart/x-mixed-replace; boundary=frame'
-      await response.prepare(request)
+    response = aiohttp.web.StreamResponse()
+    response.content_type = 'multipart/x-mixed-replace; boundary=frame'
+    await response.prepare(request)
 
-      for frame in frames(video_device):
-          await response.write(frame)
+    for frame in frames(video_device):
+      await response.write(frame)
 
-      return response
+    return response
 
   return video_feed
 
 
+def dai_video_feed_gen():
+  pipeline = depthai.Pipeline()
+
+  # Define source and output
+  camRgb = pipeline.createColorCamera()
+  xoutRgb = pipeline.createXLinkOut()
+
+  xoutRgb.setStreamName("rgb")
+
+  # Properties
+  camRgb.setPreviewSize(300, 300)
+  camRgb.setInterleaved(False)
+  camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
+
+  # Linking
+  camRgb.preview.link(xoutRgb.input)
+
+  async def video_feed(request):
+    nonlocal pipeline
+
+    response = aiohttp.web.StreamResponse()
+    response.content_type = 'multipart/x-mixed-replace; boundary=frame'
+    await response.prepare(request)
+
+    with dai.Device(pipeline) as device:
+
+      print('Connected cameras: ', device.getConnectedCameras())
+      # Print out usb speed
+      print('Usb speed: ', device.getUsbSpeed().name)
+
+      # Output queue will be used to get the rgb frames from the output defined above
+      qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+
+      # for frame in frames(video_device):
+      #     await response.write(frame)
+
+      while True:
+        inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
+        cv_frame = inRgb.getCvFrame()
+        print(f'TODO return cv_frame={cv_frame}')
+
+
+    return response
+
+  return video_feed
 
 def main(args=sys.argv):
   # Ensure always at repo root
@@ -143,6 +188,12 @@ def main(args=sys.argv):
         aiohttp.web.get(f'/video{i}', video_feed_gen(v_dev))
       )
       print(f'Serving {v_dev} at /video{i}')
+
+  if len(depthai.Device.getAllAvailableDevices()) > 0:
+    video_feeds.append(
+      aiohttp.web.get(f'/depthai', dai_video_feed_gen())
+    )
+    print(f'Serving  /depthai')
 
   server.add_routes([
     aiohttp.web.get('/', http_index_req_handler),
