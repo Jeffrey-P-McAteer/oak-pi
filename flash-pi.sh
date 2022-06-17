@@ -46,6 +46,9 @@ EOD
 
 sudo systemctl enable --now our-wifi.service
 
+# For video stuff
+sudo pacman -S opencv python-opencv hdf5
+
 
 EOF
 

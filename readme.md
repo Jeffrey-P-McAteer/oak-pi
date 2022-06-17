@@ -7,7 +7,12 @@ badssh alarm@192.168.5.210
 
 cd /opt/oak-pi
 
+# yay -S python python-pip
+# yay -S opencv python-opencv hdf5
 python -m server
+
+# yay -S rxvt-unicode xpra xorg
+xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --start=urxvt
 
 
 ```
