@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 import traceback
+import socket
 
 # python -m pip install --user aiohttp
 try:
@@ -26,6 +27,18 @@ except:
     *('-m pip install --user opencv-python'.split(' '))
   ])
   import cv2
+
+
+def get_lan_ip():
+  ip = ''
+  try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = str(s.getsockname()[0])
+    s.close()
+  except:
+    traceback.print_exc()
+  return ip
 
 async def http_index_req_handler(req):
   return aiohttp.web.FileResponse(path='index.html', status=200)
@@ -128,6 +141,7 @@ def main(args=sys.argv):
 
   print()
   print(f'Listening on http://0.0.0.0:{http_port}/')
+  print(f'Listening on http://{get_lan_ip()}:{http_port}/')
   print()
   aiohttp.web.run_app(server, port=http_port)
 

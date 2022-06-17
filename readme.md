@@ -5,6 +5,9 @@
 ```bash
 badssh alarm@192.168.5.210
 
+cd /opt/oak-pi
+
+python -m server
 
 
 ```
