@@ -136,7 +136,7 @@ def dai_video_feed_gen():
   # Properties
   camRgb.setPreviewSize(300, 300)
   camRgb.setInterleaved(False)
-  camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
+  camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
 
   # Linking
   camRgb.preview.link(xoutRgb.input)
@@ -148,7 +148,7 @@ def dai_video_feed_gen():
     response.content_type = 'multipart/x-mixed-replace; boundary=frame'
     await response.prepare(request)
 
-    with dai.Device(pipeline) as device:
+    with depthai.Device(pipeline) as device:
 
       print('Connected cameras: ', device.getConnectedCameras())
       # Print out usb speed
