@@ -5,6 +5,11 @@ import sys
 import subprocess
 import traceback
 import socket
+import platform
+
+# DepthAI config request (from https://github.com/luxonis/depthai/blob/3819aa513f58f2d749e5d5c94953ce1d2fe0a061/depthai_demo.py )
+if platform.machine() == 'aarch64':  # Jetson
+  os.environ['OPENBLAS_CORETYPE'] = "ARMV8"
 
 # python -m pip install --user aiohttp
 try:
@@ -27,6 +32,17 @@ except:
     *('-m pip install --user opencv-contrib-python'.split(' '))
   ])
   import cv2
+
+# python -m pip install --user depthai
+try:
+  import depthai
+except:
+  traceback.print_exc()
+  subprocess.run([
+    sys.executable,
+    *('-m pip install --user depthai'.split(' '))
+  ])
+  import depthai
 
 
 def get_lan_ip():

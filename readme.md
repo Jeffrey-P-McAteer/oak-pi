@@ -5,14 +5,18 @@
 ```bash
 badssh alarm@192.168.5.210
 
+# Config for OAK-D lite hardware
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+
 cd /opt/oak-pi
 
 # yay -S python python-pip
 # yay -S opencv python-opencv hdf5
 python -m server
 
-# yay -S rxvt-unicode xpra xorg
-xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --start=urxvt
+# yay -S rxvt-unicode xpra xpra-html5-git xorg
+xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --speaker=off --microphone=off --start=urxvt
 
 
 ```
@@ -46,6 +50,13 @@ Graphics:
 https://threejs.org/examples/#webgl_loader_collada_skinning
 
 https://viso.ai/deep-learning/openpose/
+
+
+
+https://docs.luxonis.com/projects/api/en/latest/components/pipeline/
+
+
+
 
 
 
