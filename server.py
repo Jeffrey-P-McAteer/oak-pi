@@ -17,14 +17,14 @@ except:
   ])
   import aiohttp.web
 
-# python -m pip install --user opencv-python
+# python -m pip install --user opencv-python # or opencv-contrib-python
 try:
   import cv2
 except:
   traceback.print_exc()
   subprocess.run([
     sys.executable,
-    *('-m pip install --user opencv-python'.split(' '))
+    *('-m pip install --user opencv-contrib-python'.split(' '))
   ])
   import cv2
 
