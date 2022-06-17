@@ -113,6 +113,7 @@ def main(args=sys.argv):
       video_feeds.append(
         aiohttp.web.get(f'/video{i}', video_feed_gen(v_dev))
       )
+      print(f'Serving {v_dev} at /video{i}')
 
   server.add_routes([
     aiohttp.web.get('/', http_index_req_handler),
