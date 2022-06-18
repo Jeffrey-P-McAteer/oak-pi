@@ -159,6 +159,7 @@ def dai_video_feed_gen():
   camRgb.preview.link(xoutRgb.input)
 
   async def video_feed(request):
+    global exit_flag
     nonlocal pipeline
 
     response = aiohttp.web.StreamResponse()
@@ -232,6 +233,7 @@ def dai_depth_map():
   depth.disparity.link(xout.input)
 
   async def video_feed(request):
+    global exit_flag
     nonlocal pipeline
 
     response = aiohttp.web.StreamResponse()
@@ -285,6 +287,7 @@ def dai_rgb_pose():
 
   async def video_feed(request):
     nonlocal pipeline
+    global exit_flag
 
     response = aiohttp.web.StreamResponse()
     response.content_type = 'multipart/x-mixed-replace; boundary=frame'
