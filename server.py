@@ -379,7 +379,7 @@ def main(args=sys.argv):
   print(f'Listening on http://{my_lan_ip}:{http_port}/')
   print()
   for vf in video_feeds:
-    print(f'Useful link: http://{my_lan_ip}:{http_port}/{vf.path}')
+    print(f'Useful link: http://{my_lan_ip}:{http_port}{vf.path}')
   print()
   aiohttp.web.run_app(server, port=http_port)
 
