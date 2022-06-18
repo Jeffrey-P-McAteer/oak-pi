@@ -119,7 +119,7 @@ def frames(path):
     if not camera.isOpened():
         raise RuntimeError('Cannot open camera')
 
-    while exit_flag:
+    while not exit_flag:
         _, img = camera.read()
         img = cv2.resize(img, (480, 320))
         frame = cv2.imencode('.jpg', img)[1].tobytes()
@@ -177,7 +177,7 @@ def dai_video_feed_gen():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while exit_flag:
+      while not exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
@@ -250,7 +250,7 @@ def dai_depth_map():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while exit_flag:
+      while not exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
@@ -302,7 +302,7 @@ def dai_rgb_pose():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while exit_flag:
+      while not exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
