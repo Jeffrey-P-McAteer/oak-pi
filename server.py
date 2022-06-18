@@ -324,7 +324,7 @@ exit_flag = False # use in infinite loops to make them slightly less infinite
 def on_signal():
   global exit_flag
   exit_flag = True
-  print('Exiting...')
+  #print('Exiting...')
   sys.exit(1)
 
 async def start_background_tasks(arg):
