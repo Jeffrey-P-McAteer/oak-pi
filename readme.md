@@ -15,6 +15,8 @@ cd /opt/oak-pi
 # yay -S opencv python-opencv hdf5
 python -m server
 
+
+# Never actually used, but remote x11 over html5. Kinda.
 # yay -S rxvt-unicode xpra xpra-html5-git xorg
 xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --speaker=off --microphone=off --start=urxvt
 
