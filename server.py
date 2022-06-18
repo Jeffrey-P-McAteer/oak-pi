@@ -373,9 +373,13 @@ def main(args=sys.argv):
   server.on_startup.append(start_background_tasks)
   server.on_shutdown.append(stop_background_tasks)
 
+  my_lan_ip = get_lan_ip()
   print()
   print(f'Listening on http://0.0.0.0:{http_port}/')
-  print(f'Listening on http://{get_lan_ip()}:{http_port}/')
+  print(f'Listening on http://{my_lan_ip}:{http_port}/')
+  print()
+  for vf in video_feeds:
+    print(f'Useful link: http://{my_lan_ip}:{http_port}/{vf.path}')
   print()
   aiohttp.web.run_app(server, port=http_port)
 
