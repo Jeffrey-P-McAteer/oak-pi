@@ -173,6 +173,79 @@ def dai_video_feed_gen():
 
   return video_feed
 
+
+
+def dai_depth_map():
+  # Closer-in minimum depth, disparity range is doubled (from 95 to 190):
+  extended_disparity = False
+  # Better accuracy for longer distance, fractional disparity 32-levels:
+  subpixel = False
+  # Better handling for occlusions:
+  lr_check = False
+
+  # Create pipeline
+  pipeline = depthai.Pipeline()
+
+  # Define sources and outputs
+  monoLeft = pipeline.createMonoCamera()
+  monoRight = pipeline.createMonoCamera()
+  depth = pipeline.createStereoDepth()
+  xout = pipeline.createXLinkOut()
+
+  xout.setStreamName("disparity")
+
+  # Properties
+  monoLeft.setResolution(depthai.MonoCameraProperties.SensorResolution.THE_400_P)
+  monoLeft.setBoardSocket(depthai.CameraBoardSocket.LEFT)
+  monoRight.setResolution(depthai.MonoCameraProperties.SensorResolution.THE_400_P)
+  monoRight.setBoardSocket(depthai.CameraBoardSocket.RIGHT)
+
+  # Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
+  depth.initialConfig.setConfidenceThreshold(200)
+  # Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
+  depth.initialConfig.setMedianFilter(depthai.MedianFilter.KERNEL_7x7)
+  depth.setLeftRightCheck(lr_check)
+  depth.setExtendedDisparity(extended_disparity)
+  depth.setSubpixel(subpixel)
+
+  # Linking
+  monoLeft.out.link(depth.left)
+  monoRight.out.link(depth.right)
+  depth.disparity.link(xout.input)
+
+  async def video_feed(request):
+    nonlocal pipeline
+
+    response = aiohttp.web.StreamResponse()
+    response.content_type = 'multipart/x-mixed-replace; boundary=frame'
+    await response.prepare(request)
+
+    with depthai.Device(pipeline) as device:
+
+      print('Connected cameras: ', device.getConnectedCameras())
+      # Print out usb speed
+      print('Usb speed: ', device.getUsbSpeed().name)
+
+      # Output queue will be used to get the rgb frames from the output defined above
+      qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+
+      # for frame in frames(video_device):
+      #     await response.write(frame)
+
+      while True:
+        inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
+        cv_img = inRgb.getCvFrame()
+
+        cv_img = cv2.resize(cv_img, (480, 320))
+        frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
+        frame_packet = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'+frame+b'\r\n'
+        await response.write(frame_packet)
+
+    return response
+
+  return video_feed
+
+
 def main(args=sys.argv):
   # Ensure always at repo root
   os.chdir( os.path.dirname(os.path.abspath(__file__)) )
@@ -197,6 +270,11 @@ def main(args=sys.argv):
       aiohttp.web.get(f'/depthai', dai_video_feed_gen())
     )
     print(f'Serving  /depthai')
+
+    video_feeds.append(
+      aiohttp.web.get(f'/depth_map', dai_depth_map())
+    )
+    print(f'Serving  /depth_map')
 
   server.add_routes([
     aiohttp.web.get('/', http_index_req_handler),
