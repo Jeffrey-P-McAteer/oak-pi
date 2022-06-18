@@ -114,11 +114,12 @@ async def ws_req_handler(req):
   return ws
 
 def frames(path):
+    global exit_flag
     camera = cv2.VideoCapture(path)
     if not camera.isOpened():
         raise RuntimeError('Cannot open camera')
 
-    while True:
+    while exit_flag:
         _, img = camera.read()
         img = cv2.resize(img, (480, 320))
         frame = cv2.imencode('.jpg', img)[1].tobytes()
@@ -140,6 +141,7 @@ def video_feed_gen(video_device='/dev/video0'):
 
 
 def dai_video_feed_gen():
+  global exit_flag
   pipeline = depthai.Pipeline()
 
   # Define source and output
@@ -175,7 +177,7 @@ def dai_video_feed_gen():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while True:
+      while exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
@@ -191,6 +193,7 @@ def dai_video_feed_gen():
 
 
 def dai_depth_map():
+  global exit_flag
   # Closer-in minimum depth, disparity range is doubled (from 95 to 190):
   extended_disparity = False
   # Better accuracy for longer distance, fractional disparity 32-levels:
@@ -247,7 +250,7 @@ def dai_depth_map():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while True:
+      while exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
@@ -262,6 +265,7 @@ def dai_depth_map():
 
 
 def dai_rgb_pose():
+  global exit_flag
   pipeline = depthai.Pipeline()
 
   # Define source and output
@@ -272,7 +276,7 @@ def dai_rgb_pose():
 
   # Properties
   #camRgb.setPreviewSize(1920, 1080) # full resolution, super laggy given the inefficient JPEG encoding we currently use
-  camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution
+  camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution, feels real-time on my network
   camRgb.setInterleaved(False)
   camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
 
@@ -298,7 +302,7 @@ def dai_rgb_pose():
       # for frame in frames(video_device):
       #     await response.write(frame)
 
-      while True:
+      while exit_flag:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
         cv_img = inRgb.getCvFrame()
 
@@ -313,7 +317,10 @@ def dai_rgb_pose():
 
 
 
+exit_flag = False # use in infinite loops to make them slightly less infinite
 def on_signal():
+  global exit_flag
+  exit_flag = True
   print('Exiting...')
   sys.exit(1)
 
