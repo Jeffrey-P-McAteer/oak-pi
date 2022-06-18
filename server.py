@@ -47,15 +47,15 @@ except:
   import depthai
 
 # python -m pip install --user openvino # intel's model stuff, mostly useful because it provides omz_downloader
-try:
-  import openvino
-except:
-  traceback.print_exc()
-  subprocess.run([
-    sys.executable,
-    *('-m pip install --user openvino'.split(' '))
-  ])
-  import openvino
+# try:
+#   import openvino
+# except:
+#   traceback.print_exc()
+#   subprocess.run([
+#     sys.executable,
+#     *('-m pip install --user openvino'.split(' '))
+#   ])
+#   import openvino
 
 
 
