@@ -58,6 +58,8 @@ https://viso.ai/deep-learning/openpose/
 https://docs.luxonis.com/projects/api/en/latest/components/pipeline/
 
 
+https://github.com/geaxgx/depthai_blazepose
+
 
 
 
