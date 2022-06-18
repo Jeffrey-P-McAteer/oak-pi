@@ -21,6 +21,9 @@ python -m server
 # yay -S rxvt-unicode xpra xpra-html5-git xorg
 xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --speaker=off --microphone=off --start=urxvt
 
+# Nifty file copy
+rsync -avz ./ alarm@192.168.5.210:/opt/oak-pi/
+
 
 ```
 

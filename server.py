@@ -8,6 +8,8 @@ import socket
 import platform
 import signal
 import asyncio
+import string
+import re
 
 # DepthAI config request (from https://github.com/luxonis/depthai/blob/3819aa513f58f2d749e5d5c94953ce1d2fe0a061/depthai_demo.py )
 if platform.machine() == 'aarch64':  # Jetson
@@ -289,11 +291,52 @@ def dai_depth_map():
   return video_feed
 
 
+def build_rgb_pose_manager_script(trace, pd_score_thresh, lm_score_thresh, force_detection, pad_h, img_h, frame_size, crop_w, rect_transf_scale, xyz, visibility_threshold):
+    '''
+    The code of the scripting node 'manager_script' depends on :
+        - the NN model (full, lite, 831),
+        - the score threshold,
+        - the video frame shape
+    So we build this code from the content of the file template_manager_script.py which is a python template
+    '''
+    # Read the template
+    template_manager_script = 'build/template_manager_script.py'
+    if not os.path.exists(template_manager_script):
+      subprocess.run([
+        'wget', '-O', template_manager_script, 'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/a3ce15a25c82f4663e4d263c99d7f83ece59ab64/template_manager_script.py'
+      ], check=True)
+    with open(template_manager_script, 'r') as file:
+        template = string.Template(file.read())
+    
+    # Perform the substitution
+    code = template.substitute(
+                _TRACE = "node.warn" if trace else "#",
+                _pd_score_thresh = pd_score_thresh,
+                _lm_score_thresh = lm_score_thresh,
+                _force_detection = force_detection,
+                _pad_h = pad_h,
+                _img_h = img_h,
+                _frame_size = frame_size,
+                _crop_w = crop_w,
+                _rect_transf_scale = rect_transf_scale,
+                _IF_XYZ = "" if xyz else '"""',
+                _buffer_size = 2910 if xyz else 2863,
+                _visibility_threshold = visibility_threshold
+    )
+    # Remove comments and empty lines
+    code = re.sub(r'"{3}.*?"{3}', '', code, flags=re.DOTALL)
+    code = re.sub(r'#.*', '', code)
+    code = re.sub('\n\s*\n', '\n', code)
+    
+    return code
+
 def dai_rgb_pose():
   global exit_flag
 
   # Pipeline definition modified from https://github.com/geaxgx/depthai_blazepose/blob/main/BlazeposeDepthai.py#L259
 
+  device = depthai.Device() # Just stays open
+  
   pipeline = depthai.Pipeline()
 
   # Define source and output
@@ -307,13 +350,98 @@ def dai_rgb_pose():
   camRgb.setVideoSize(1920 // 4, 1080 // 4)
   camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution, feels real-time on my network
 
-  width, scale_nd =  mediapipe_utils.find_isp_scale_params(1920 // 4, is_height=False)
+  frame_size, scale_nd =  mediapipe_utils.find_isp_scale_params(1920 // 4, is_height=False)
   camRgb.setIspScale(scale_nd[0], scale_nd[1])
-  camRgb.setFps(8) # required by full model
+  
+  img_w = int(round(1080 * scale_nd[0] / scale_nd[1]))
+  img_h = int(round(1920 * scale_nd[0] / scale_nd[1]))
+  pad_h = (img_w - img_h) // 2
+  pad_w = 0
+  crop_w = 0
+
+  nb_kps = 33 # where is this used?
+  pd_score_thresh = 0.5
+  lm_score_thresh = 0.7
+  force_detection = False # when true ignore previous frame person data
+  rect_transf_scale = 1.25
+  visibility_threshold = 0.5
+  internal_fps = 8 # required by full model
+
+  pd_input_length = 224
+  lm_input_length = 256
+
+  camRgb.setFps(internal_fps)
   camRgb.setBoardSocket(depthai.CameraBoardSocket.RGB)
 
   camRgb.setInterleaved(False)
   camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
+
+  manager_script = pipeline.create(depthai.node.Script)
+  manager_script.setScript(build_rgb_pose_manager_script(
+    trace=False, # no debug data for now
+    pd_score_thresh=pd_score_thresh,
+    lm_score_thresh=lm_score_thresh,
+    force_detection=force_detection,
+    pad_h=pad_h,
+    img_h=img_h,
+    frame_size=frame_size,
+    crop_w=crop_w,
+    rect_transf_scale=rect_transf_scale,
+    xyz=True, # pull depth data for x,y locations
+    visibility_threshold=visibility_threshold
+  ))
+
+  # For now, RGB needs fixed focus to properly align with depth.
+  # The value used during calibration should be used here
+  calib_data = device.readCalibration()
+  calib_lens_pos = calib_data.getLensPosition(depthai.CameraBoardSocket.RGB)
+  print(f"RGB calibration lens position: {calib_lens_pos}")
+  camRgb.initialControl.setManualFocus(calib_lens_pos)
+
+  mono_resolution = depthai.MonoCameraProperties.SensorResolution.THE_400_P
+  left = pipeline.createMonoCamera()
+  left.setBoardSocket(depthai.CameraBoardSocket.LEFT)
+  left.setResolution(mono_resolution)
+  left.setFps(internal_fps)
+
+  right = pipeline.createMonoCamera()
+  right.setBoardSocket(depthai.CameraBoardSocket.RIGHT)
+  right.setResolution(mono_resolution)
+  right.setFps(internal_fps)
+
+  stereo = pipeline.createStereoDepth()
+  stereo.setConfidenceThreshold(230)
+  # LR-check is required for depth alignment
+  stereo.setLeftRightCheck(True)
+  stereo.setDepthAlign(depthai.CameraBoardSocket.RGB)
+  stereo.setSubpixel(False)  # subpixel True -> latency
+  # MEDIAN_OFF necessary in depthai 2.7.2. 
+  # Otherwise : [critical] Fatal error. Please report to developers. Log: 'StereoSipp' '533'
+  # stereo.setMedianFilter(dai.StereoDepthProperties.MedianFilter.MEDIAN_OFF)
+
+  spatial_location_calculator = pipeline.createSpatialLocationCalculator()
+  spatial_location_calculator.setWaitForConfigInput(True)
+  spatial_location_calculator.inputDepth.setBlocking(False)
+  spatial_location_calculator.inputDepth.setQueueSize(1)
+
+  left.out.link(stereo.left)
+  right.out.link(stereo.right)
+
+  stereo.depth.link(spatial_location_calculator.inputDepth)
+
+
+  manager_script.outputs['spatial_location_config'].link(spatial_location_calculator.inputConfig)
+  spatial_location_calculator.out.link(manager_script.inputs['spatial_data'])
+
+  # Define pose detection pre processing (resize preview to (self.pd_input_length, self.pd_input_length))
+  print("Creating Pose Detection pre processing image manip...")
+  pre_pd_manip = pipeline.create(depthai.node.ImageManip)
+  pre_pd_manip.setMaxOutputFrameSize(pd_input_length*pd_input_length*3)
+  pre_pd_manip.setWaitForConfigInput(True)
+  pre_pd_manip.inputImage.setQueueSize(1)
+  pre_pd_manip.inputImage.setBlocking(False)
+  camRgb.preview.link(pre_pd_manip.inputImage)
+  manager_script.outputs['pre_pd_manip_cfg'].link(pre_pd_manip.inputConfig)
 
   # Linking
   camRgb.preview.link(xoutRgb.input)
@@ -326,26 +454,26 @@ def dai_rgb_pose():
     response.content_type = 'multipart/x-mixed-replace; boundary=frame'
     await response.prepare(request)
 
-    with depthai.Device(pipeline) as device:
+    print('Connected cameras: ', device.getConnectedCameras())
+    # Print out usb speed
+    print('Usb speed: ', device.getUsbSpeed().name)
 
-      print('Connected cameras: ', device.getConnectedCameras())
-      # Print out usb speed
-      print('Usb speed: ', device.getUsbSpeed().name)
+    # Output queue will be used to get the rgb frames from the output defined above
+    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
-      # Output queue will be used to get the rgb frames from the output defined above
-      qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+    # for frame in frames(video_device):
+    #     await response.write(frame)
 
-      # for frame in frames(video_device):
-      #     await response.write(frame)
+    device.startPipeline(pipeline)
 
-      while not exit_flag:
-        inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
-        cv_img = inRgb.getCvFrame()
+    while not exit_flag:
+      inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
+      cv_img = inRgb.getCvFrame()
 
-        #cv_img = cv2.resize(cv_img, (480, 320))
-        frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
-        frame_packet = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'+frame+b'\r\n'
-        await response.write(frame_packet)
+      #cv_img = cv2.resize(cv_img, (480, 320))
+      frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
+      frame_packet = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'+frame+b'\r\n'
+      await response.write(frame_packet)
 
     return response
 
