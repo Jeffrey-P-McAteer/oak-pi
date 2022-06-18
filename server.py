@@ -271,8 +271,8 @@ def dai_rgb_pose():
   xoutRgb.setStreamName("rgb")
 
   # Properties
-  camRgb.setPreviewSize(1920, 1080) # full resolution
-  #camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution
+  #camRgb.setPreviewSize(1920, 1080) # full resolution, super laggy given the inefficient JPEG encoding we currently use
+  camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution
   camRgb.setInterleaved(False)
   camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
 
