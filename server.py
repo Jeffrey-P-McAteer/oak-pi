@@ -410,7 +410,7 @@ def dai_rgb_pose():
   right.setFps(internal_fps)
 
   stereo = pipeline.createStereoDepth()
-  stereo.setConfidenceThreshold(230)
+  stereo.initialConfig.setConfidenceThreshold(230)
   # LR-check is required for depth alignment
   stereo.setLeftRightCheck(True)
   stereo.setDepthAlign(depthai.CameraBoardSocket.RGB)
@@ -420,7 +420,7 @@ def dai_rgb_pose():
   # stereo.setMedianFilter(dai.StereoDepthProperties.MedianFilter.MEDIAN_OFF)
 
   spatial_location_calculator = pipeline.createSpatialLocationCalculator()
-  spatial_location_calculator.setWaitForConfigInput(True)
+  spatial_location_calculator.inputConfig.setWaitForMessage(True)
   spatial_location_calculator.inputDepth.setBlocking(False)
   spatial_location_calculator.inputDepth.setQueueSize(1)
 
@@ -437,7 +437,7 @@ def dai_rgb_pose():
   print("Creating Pose Detection pre processing image manip...")
   pre_pd_manip = pipeline.create(depthai.node.ImageManip)
   pre_pd_manip.setMaxOutputFrameSize(pd_input_length*pd_input_length*3)
-  pre_pd_manip.setWaitForConfigInput(True)
+  pre_pd_manip.inputConfig.setWaitForMessage(True)
   pre_pd_manip.inputImage.setQueueSize(1)
   pre_pd_manip.inputImage.setBlocking(False)
   camRgb.preview.link(pre_pd_manip.inputImage)
