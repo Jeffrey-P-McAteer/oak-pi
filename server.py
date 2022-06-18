@@ -336,7 +336,7 @@ def dai_rgb_pose():
   # Pipeline definition modified from https://github.com/geaxgx/depthai_blazepose/blob/main/BlazeposeDepthai.py#L259
 
   device = depthai.Device() # Just stays open
-  
+
   pipeline = depthai.Pipeline()
 
   # Define source and output
@@ -458,13 +458,10 @@ def dai_rgb_pose():
     # Print out usb speed
     print('Usb speed: ', device.getUsbSpeed().name)
 
+    device.startPipeline(pipeline)
+
     # Output queue will be used to get the rgb frames from the output defined above
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-
-    # for frame in frames(video_device):
-    #     await response.write(frame)
-
-    device.startPipeline(pipeline)
 
     while not exit_flag:
       inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
