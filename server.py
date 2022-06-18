@@ -6,6 +6,8 @@ import subprocess
 import traceback
 import socket
 import platform
+import signal
+import asyncio
 
 # DepthAI config request (from https://github.com/luxonis/depthai/blob/3819aa513f58f2d749e5d5c94953ce1d2fe0a061/depthai_demo.py )
 if platform.machine() == 'aarch64':  # Jetson
@@ -245,6 +247,19 @@ def dai_depth_map():
 
   return video_feed
 
+def on_signal():
+  print('Exiting...')
+  sys.exit(1)
+
+async def start_background_tasks(arg):
+  loop = asyncio.get_event_loop()
+  for sig_num in [signal.SIGINT, signal.SIGTERM]:
+    loop.add_signal_handler(sig_num, on_signal)
+
+
+async def stop_background_tasks(arg):
+  pass
+  
 
 def main(args=sys.argv):
   # Ensure always at repo root
@@ -284,8 +299,8 @@ def main(args=sys.argv):
     
   ])
 
-  #server.on_startup.append(start_background_tasks)
-  #server.on_shutdown.append(stop_background_tasks)
+  server.on_startup.append(start_background_tasks)
+  server.on_shutdown.append(stop_background_tasks)
 
   print()
   print(f'Listening on http://0.0.0.0:{http_port}/')
