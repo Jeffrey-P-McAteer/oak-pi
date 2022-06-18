@@ -35,7 +35,7 @@ except:
   ])
   import cv2
 
-# python -m pip install --user depthai
+# python -m pip install --user depthai # interface to OAK-D camera
 try:
   import depthai
 except:
@@ -45,6 +45,19 @@ except:
     *('-m pip install --user depthai'.split(' '))
   ])
   import depthai
+
+# python -m pip install --user openvino # intel's model stuff, mostly useful because it provides omz_downloader
+try:
+  import openvino
+except:
+  traceback.print_exc()
+  subprocess.run([
+    sys.executable,
+    *('-m pip install --user openvino'.split(' '))
+  ])
+  import openvino
+
+
 
 
 def get_lan_ip():
@@ -247,6 +260,58 @@ def dai_depth_map():
 
   return video_feed
 
+
+def dai_rgb_pose():
+  pipeline = depthai.Pipeline()
+
+  # Define source and output
+  camRgb = pipeline.createColorCamera()
+  xoutRgb = pipeline.createXLinkOut()
+
+  xoutRgb.setStreamName("rgb")
+
+  # Properties
+  camRgb.setPreviewSize(300, 300)
+  camRgb.setInterleaved(False)
+  camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
+
+  # Linking
+  camRgb.preview.link(xoutRgb.input)
+
+  async def video_feed(request):
+    nonlocal pipeline
+
+    response = aiohttp.web.StreamResponse()
+    response.content_type = 'multipart/x-mixed-replace; boundary=frame'
+    await response.prepare(request)
+
+    with depthai.Device(pipeline) as device:
+
+      print('Connected cameras: ', device.getConnectedCameras())
+      # Print out usb speed
+      print('Usb speed: ', device.getUsbSpeed().name)
+
+      # Output queue will be used to get the rgb frames from the output defined above
+      qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+
+      # for frame in frames(video_device):
+      #     await response.write(frame)
+
+      while True:
+        inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
+        cv_img = inRgb.getCvFrame()
+
+        #cv_img = cv2.resize(cv_img, (480, 320))
+        frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
+        frame_packet = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'+frame+b'\r\n'
+        await response.write(frame_packet)
+
+    return response
+
+  return video_feed
+
+
+
 def on_signal():
   print('Exiting...')
   sys.exit(1)
@@ -290,6 +355,11 @@ def main(args=sys.argv):
       aiohttp.web.get(f'/depth_map', dai_depth_map())
     )
     print(f'Serving  /depth_map')
+
+    video_feeds.append(
+      aiohttp.web.get(f'/rgb_pose', dai_rgb_pose())
+    )
+    print(f'Serving  /rgb_pose')
 
   server.add_routes([
     aiohttp.web.get('/', http_index_req_handler),
