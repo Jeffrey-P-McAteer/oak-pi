@@ -15,6 +15,7 @@ cd /opt/oak-pi
 # yay -S opencv python-opencv hdf5
 python -m server
 
+/home/alarm/.local/bin/omz_downloader
 
 # Never actually used, but remote x11 over html5. Kinda.
 # yay -S rxvt-unicode xpra xpra-html5-git xorg

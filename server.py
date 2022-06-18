@@ -53,8 +53,16 @@ except:
   traceback.print_exc()
   subprocess.run([
     sys.executable, # manual "dependency" resolution
-    *('-m pip install --user fast-ctc-decode scipy'.split(' '))
+    *('-m pip install --user addict defusedxml imagecodecs jstyleson lmdb networkx nibabel nltk openvino openvino-telemetry pandas parasail py-cpuinfo pyclipper pydicom pyyaml rawpy scikit-image scikit-learn sentencepiece shapely texttable  tokenizers tqdm transformers numpy scipy'.split(' '))
   ])
+  # Rest of openvino-dev deps:
+  # python -m pip install --user addict defusedxml imagecodecs jstyleson lmdb networkx nibabel nltk openvino openvino-telemetry pandas parasail py-cpuinfo pyclipper pydicom pyyaml rawpy scikit-image scikit-learn sentencepiece shapely texttable  tokenizers tqdm transformers numpy scipy
+
+  # TODO add building fast-ctc-decode manually b/c there's no aarch64 distribution at the moment
+  # yay -S maturin
+  # cd /tmp ; git clone https://github.com/nanoporetech/fast-ctc-decode.git
+  # cd fast-ctc-decode ; make build
+
   subprocess.run([
     sys.executable,
     *('-m pip install --user --no-dependencies openvino-dev'.split(' '))
@@ -346,6 +354,24 @@ def main(args=sys.argv):
   os.chdir( os.path.dirname(os.path.abspath(__file__)) )
 
   print(f'args={args}')
+
+  # Ensure we can dump things into the .gitignored models/ dir
+  os.makedirs('models', exist_ok=True)
+
+  # Ensure we have models we use
+  # subprocess.run([
+  #   'omz_downloader', '-o', 'models/', '--name', ''
+  # ])
+  files_and_urls = [
+    ('models/pose_landmark_full_FP32.xml', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.xml'),
+    ('models/pose_landmark_full_FP32.bin', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.bin'),
+  ]
+  for file, url in files_and_urls:
+    if not os.path.exists(file):
+      print(f'Downloading {file} from {url} using wget')
+      subprocess.run([
+        'wget', '-O', file, url
+      ], check=True)
 
   http_port = 8000
 
