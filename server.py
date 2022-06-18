@@ -443,6 +443,70 @@ def dai_rgb_pose():
   camRgb.preview.link(pre_pd_manip.inputImage)
   manager_script.outputs['pre_pd_manip_cfg'].link(pre_pd_manip.inputConfig)
 
+  # For debugging
+  # pre_pd_manip_out = pipeline.createXLinkOut()
+  # pre_pd_manip_out.setStreamName("pre_pd_manip_out")
+  # pre_pd_manip.out.link(pre_pd_manip_out.input)
+
+  pd_model = 'models/pose_detection_sh4.blob'
+  divide_by_255_model = 'models/DivideBy255_sh1.blob'
+  pp_model = 'models/DetectionBestCandidate_sh1.blob'
+
+
+  # Define pose detection model
+  print("Creating Pose Detection Neural Network...")
+  pd_nn = pipeline.create(depthai.node.NeuralNetwork)
+  pd_nn.setBlobPath(pd_model)
+  # Increase threads for detection
+  # pd_nn.setNumInferenceThreads(2)
+  pre_pd_manip.out.link(pd_nn.input)
+ 
+  # Define pose detection post processing "model"
+  print("Creating Pose Detection post processing Neural Network...")
+  post_pd_nn = pipeline.create(depthai.node.NeuralNetwork)
+  post_pd_nn.setBlobPath(pp_model)
+  pd_nn.out.link(post_pd_nn.input)
+  post_pd_nn.out.link(manager_script.inputs['from_post_pd_nn'])
+
+  # Define link to send result to host 
+  manager_out = pipeline.create(depthai.node.XLinkOut)
+  manager_out.setStreamName("manager_out")
+  manager_script.outputs['host'].link(manager_out.input)
+
+  # Define landmark pre processing image manip
+  print("Creating Landmark pre processing image manip...") 
+  pre_lm_manip = pipeline.create(depthai.node.ImageManip)
+  pre_lm_manip.setMaxOutputFrameSize(lm_input_length*lm_input_length*3)
+  pre_lm_manip.setWaitForConfigInput(True)
+  pre_lm_manip.inputImage.setQueueSize(1)
+  pre_lm_manip.inputImage.setBlocking(False)
+  camRgb.preview.link(pre_lm_manip.inputImage)
+
+  # For debugging
+  # pre_lm_manip_out = pipeline.createXLinkOut()
+  # pre_lm_manip_out.setStreamName("pre_lm_manip_out")
+  # pre_lm_manip.out.link(pre_lm_manip_out.input)
+
+  manager_script.outputs['pre_lm_manip_cfg'].link(pre_lm_manip.inputConfig)
+
+  # Define normalization model between ImageManip and landmark model
+  # This is a temporary step. Could be removed when support of setFrameType(RGBF16F16F16p) in ImageManip node
+  print("Creating DiveideBy255 Neural Network...") 
+  divide_nn = pipeline.create(depthai.node.NeuralNetwork)
+  divide_nn.setBlobPath(divide_by_255_model)
+  pre_lm_manip.out.link(divide_nn.input) 
+
+  # Define landmark model
+  print("Creating Landmark Neural Network...") 
+  lm_nn = pipeline.create(dai.node.NeuralNetwork)
+  lm_nn.setBlobPath(self.lm_model)
+  # lm_nn.setNumInferenceThreads(1)
+
+  divide_nn.out.link(lm_nn.input)       
+  lm_nn.out.link(manager_script.inputs['from_lm_nn'])
+
+
+
   # Linking
   camRgb.preview.link(xoutRgb.input)
 
@@ -511,6 +575,10 @@ def main(args=sys.argv):
   files_and_urls = [
     ('models/pose_landmark_full_FP32.xml', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.xml'),
     ('models/pose_landmark_full_FP32.bin', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.bin'),
+    ('models/pose_detection_sh4.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_detection_sh4.blob'),
+    ('models/DivideBy255_sh1.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/DivideBy255_sh1.blob'),
+    ('models/models/DetectionBestCandidate_sh1.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/DetectionBestCandidate_sh1.blob'),
+    # ('models/pose_detection_sh4.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.bin'),
   ]
   for file, url in files_and_urls:
     if not os.path.exists(file):
