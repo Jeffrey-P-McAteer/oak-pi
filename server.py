@@ -70,6 +70,17 @@ except:
   import openvino
 
 
+# Steal a utility file from https://github.com/geaxgx/depthai_blazepose/blob/main/mediapipe_utils.py
+try:
+  sys.path.append(os.path.abspath('build')) # assume build/mediapipe_utils.py exists, add build/ to search path
+  import mediapipe_utils
+except:
+  traceback.print_exc()
+  os.makedirs('build', exist_ok=True)
+  subprocess.run([
+    'wget', '-O', 'build/mediapipe_utils.py', 'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/main/mediapipe_utils.py'
+  ], check=True)
+  import mediapipe_utils
 
 
 def get_lan_ip():
@@ -280,6 +291,9 @@ def dai_depth_map():
 
 def dai_rgb_pose():
   global exit_flag
+
+  # Pipeline definition modified from https://github.com/geaxgx/depthai_blazepose/blob/main/BlazeposeDepthai.py#L259
+
   pipeline = depthai.Pipeline()
 
   # Define source and output
@@ -290,7 +304,14 @@ def dai_rgb_pose():
 
   # Properties
   #camRgb.setPreviewSize(1920, 1080) # full resolution, super laggy given the inefficient JPEG encoding we currently use
+  camRgb.setVideoSize(1920 // 4, 1080 // 4)
   camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution, feels real-time on my network
+
+  isp_scale_params =  mediapipe_utils.find_isp_scale_params(1920 // 4, is_height=False)
+  camRgb.setIspScale(isp_scale_params[0], isp_scale_params[1])
+  camRgb.setFps(8) # required by full model
+  camRgb.setBoardSocket(depthai.CameraBoardSocket.RGB)
+
   camRgb.setInterleaved(False)
   camRgb.setColorOrder(depthai.ColorCameraProperties.ColorOrder.RGB)
 
