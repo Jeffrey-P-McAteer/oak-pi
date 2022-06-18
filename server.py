@@ -307,8 +307,8 @@ def dai_rgb_pose():
   camRgb.setVideoSize(1920 // 4, 1080 // 4)
   camRgb.setPreviewSize(1920 // 4, 1080 // 4) # quarter resolution, feels real-time on my network
 
-  isp_scale_params =  mediapipe_utils.find_isp_scale_params(1920 // 4, is_height=False)
-  camRgb.setIspScale(isp_scale_params[0], isp_scale_params[1])
+  width, scale_nd =  mediapipe_utils.find_isp_scale_params(1920 // 4, is_height=False)
+  camRgb.setIspScale(scale_nd[0], scale_nd[1])
   camRgb.setFps(8) # required by full model
   camRgb.setBoardSocket(depthai.CameraBoardSocket.RGB)
 
