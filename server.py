@@ -46,14 +46,18 @@ except:
   ])
   import depthai
 
-# python -m pip install --user openvino-dev # intel's model stuff, mostly useful because it provides omz_downloader
+# python -m pip install --user --no-dependencies openvino-dev # intel's model stuff, mostly useful because it provides omz_downloader
 try:
   import openvino
 except:
   traceback.print_exc()
   subprocess.run([
+    sys.executable, # manual "dependency" resolution
+    *('-m pip install --user fast-ctc-decode scipy'.split(' '))
+  ])
+  subprocess.run([
     sys.executable,
-    *('-m pip install --user openvino-dev'.split(' '))
+    *('-m pip install --user --no-dependencies openvino-dev'.split(' '))
   ])
   import openvino
 
