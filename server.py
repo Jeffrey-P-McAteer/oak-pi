@@ -227,7 +227,7 @@ def dai_depth_map():
       print('Usb speed: ', device.getUsbSpeed().name)
 
       # Output queue will be used to get the rgb frames from the output defined above
-      qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+      qRgb = device.getOutputQueue(name="disparity", maxSize=4, blocking=False)
 
       # for frame in frames(video_device):
       #     await response.write(frame)
