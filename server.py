@@ -451,7 +451,7 @@ def dai_rgb_pose():
   pd_model = 'models/pose_detection_sh4.blob'
   divide_by_255_model = 'models/DivideBy255_sh1.blob'
   pp_model = 'models/DetectionBestCandidate_sh1.blob'
-
+  lm_model = 'models/pose_landmark_full_sh4.blob'
 
   # Define pose detection model
   print("Creating Pose Detection Neural Network...")
@@ -491,18 +491,18 @@ def dai_rgb_pose():
 
   # Define normalization model between ImageManip and landmark model
   # This is a temporary step. Could be removed when support of setFrameType(RGBF16F16F16p) in ImageManip node
-  print("Creating DiveideBy255 Neural Network...") 
+  print("Creating DiveideBy255 Neural Network...")
   divide_nn = pipeline.create(depthai.node.NeuralNetwork)
   divide_nn.setBlobPath(divide_by_255_model)
-  pre_lm_manip.out.link(divide_nn.input) 
+  pre_lm_manip.out.link(divide_nn.input)
 
   # Define landmark model
-  print("Creating Landmark Neural Network...") 
-  lm_nn = pipeline.create(dai.node.NeuralNetwork)
-  lm_nn.setBlobPath(self.lm_model)
+  print("Creating Landmark Neural Network...")
+  lm_nn = pipeline.create(depthai.node.NeuralNetwork)
+  lm_nn.setBlobPath(lm_model)
   # lm_nn.setNumInferenceThreads(1)
 
-  divide_nn.out.link(lm_nn.input)       
+  divide_nn.out.link(lm_nn.input)
   lm_nn.out.link(manager_script.inputs['from_lm_nn'])
 
 
@@ -573,18 +573,16 @@ def main(args=sys.argv):
   #   'omz_downloader', '-o', 'models/', '--name', ''
   # ])
   files_and_urls = [
-    ('models/pose_landmark_full_FP32.xml', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.xml'),
-    ('models/pose_landmark_full_FP32.bin', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.bin'),
-    ('models/pose_detection_sh4.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_detection_sh4.blob'),
-    ('models/DivideBy255_sh1.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/DivideBy255_sh1.blob'),
-    ('models/models/DetectionBestCandidate_sh1.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/DetectionBestCandidate_sh1.blob'),
-    # ('models/pose_detection_sh4.blob', 'https://raw.githubusercontent.com/geaxgx/openvino_blazepose/main/models/pose_landmark_full_FP32.bin'),
+    ('models/pose_detection_sh4.blob',         'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/main/models/pose_detection_sh4.blob'),
+    ('models/DivideBy255_sh1.blob',            'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/main/custom_models/DivideBy255_sh1.blob'),
+    ('models/DetectionBestCandidate_sh1.blob', 'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/main/custom_models/DetectionBestCandidate_sh1.blob'),
+    ('models/pose_landmark_full_sh4.blob',     'https://raw.githubusercontent.com/geaxgx/depthai_blazepose/main/models/pose_landmark_full_sh4.blob'),
   ]
   for file, url in files_and_urls:
-    if not os.path.exists(file):
+    if not os.path.exists(file) or os.path.getsize(file) < 2:
       print(f'Downloading {file} from {url} using wget')
       subprocess.run([
-        'wget', '-O', file, url
+        'wget', '-O', file, '--inet4-only', url
       ], check=True)
 
   http_port = 8000
@@ -601,15 +599,16 @@ def main(args=sys.argv):
       print(f'Serving {v_dev} at /video{i}')
 
   if len(depthai.Device.getAllAvailableDevices()) > 0:
-    video_feeds.append(
-      aiohttp.web.get(f'/depthai', dai_video_feed_gen())
-    )
-    print(f'Serving  /depthai')
+    ## dai_rgb_pose is complicated enough it owns the device forever, so these endpoints cannot be used anyway
+    # video_feeds.append(
+    #   aiohttp.web.get(f'/depthai', dai_video_feed_gen())
+    # )
+    # print(f'Serving  /depthai')
 
-    video_feeds.append(
-      aiohttp.web.get(f'/depth_map', dai_depth_map())
-    )
-    print(f'Serving  /depth_map')
+    # video_feeds.append(
+    #   aiohttp.web.get(f'/depth_map', dai_depth_map())
+    # )
+    # print(f'Serving  /depth_map')
 
     video_feeds.append(
       aiohttp.web.get(f'/rgb_pose', dai_rgb_pose())
