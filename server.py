@@ -10,6 +10,7 @@ import signal
 import asyncio
 import string
 import re
+import marshal
 
 # DepthAI config request (from https://github.com/luxonis/depthai/blob/3819aa513f58f2d749e5d5c94953ce1d2fe0a061/depthai_demo.py )
 if platform.machine() == 'aarch64':  # Jetson
@@ -477,7 +478,7 @@ def dai_rgb_pose():
   print("Creating Landmark pre processing image manip...") 
   pre_lm_manip = pipeline.create(depthai.node.ImageManip)
   pre_lm_manip.setMaxOutputFrameSize(lm_input_length*lm_input_length*3)
-  pre_lm_manip.setWaitForConfigInput(True)
+  pre_lm_manip.inputConfig.setWaitForMessage(True)
   pre_lm_manip.inputImage.setQueueSize(1)
   pre_lm_manip.inputImage.setBlocking(False)
   camRgb.preview.link(pre_lm_manip.inputImage)
@@ -526,10 +527,33 @@ def dai_rgb_pose():
 
     # Output queue will be used to get the rgb frames from the output defined above
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+    qManager = device.getOutputQueue(name="manager_out", maxSize=4, blocking=False)
 
     while not exit_flag:
       inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
       cv_img = inRgb.getCvFrame()
+
+      inManager = qManager.get()
+      md = inManager.getData() # byte(), md == model_detections
+
+      md = marshal.loads(md)
+      print(f'md={md}')
+
+      if md["type"] != 0 and md["lm_score"] > lm_score_thresh:
+        x1 = int( (md["rect_center_x"] * frame_size) - md["rect_size"] / 2 )
+        y1 = int( (md["rect_center_y"] * frame_size) - md["rect_size"] / 2 )
+        x2 = int( (md["rect_center_x"] * frame_size) + md["rect_size"] / 2 )
+        y2 = int( (md["rect_center_y"] * frame_size) + md["rect_size"] / 2 )
+        print(f'(x1={x1}, y1={y1}), (x2={x2}, y2={y2})')
+        # Write stuff out!
+        cv_img = cv2.rectangle(
+          cv_img,
+          (x1, y1), (x2, y2),
+          (255,0,0), 2 # color & width
+        )
+
+      # TODO draw all over cv_img
+
 
       #cv_img = cv2.resize(cv_img, (480, 320))
       frame = cv2.imencode('.jpg', cv_img)[1].tobytes()
