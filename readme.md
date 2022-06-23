@@ -25,7 +25,7 @@ xpra start --bind-tcp=0.0.0.0:14500 --html=on --daemon=no --speaker=off --microp
 rsync -avz ./ alarm@192.168.5.210:/opt/oak-pi/
 
 # Improved one-liner
-rsync -avz ./ alarm@192.168.5.210:/opt/oak-pi/ ; badssh alarm@192.168.5.210 bash -c 'pkill -i python ; cd /opt/oak-pi ; python -u -m server'
+rsync -avz ./ alarm@192.168.5.210:/opt/oak-pi/ ; badssh alarm@192.168.5.210 bash -c 'pkill -9 python ; cd /opt/oak-pi ; python -u -m server'
 
 
 ```

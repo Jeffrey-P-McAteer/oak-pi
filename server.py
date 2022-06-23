@@ -100,6 +100,11 @@ def get_lan_ip():
 async def http_index_req_handler(req):
   return aiohttp.web.FileResponse(path='index.html', status=200)
 
+async def kill_server_handler(req):
+  sys.exit(0)
+  return aiohttp.web.FileResponse(path='index.html', status=200)
+
+
 all_websockets = []
 async def ws_req_handler(req):
   global all_websockets
@@ -614,13 +619,13 @@ def main(args=sys.argv):
   server = aiohttp.web.Application()
 
   video_feeds = []
-  for i in range(0, 9):
-    v_dev = f'/dev/video{i}'
-    if os.path.exists(v_dev):
-      video_feeds.append(
-        aiohttp.web.get(f'/video{i}', video_feed_gen(v_dev))
-      )
-      print(f'Serving {v_dev} at /video{i}')
+  # for i in range(0, 9):
+  #   v_dev = f'/dev/video{i}'
+  #   if os.path.exists(v_dev):
+  #     video_feeds.append(
+  #       aiohttp.web.get(f'/video{i}', video_feed_gen(v_dev))
+  #     )
+  #     print(f'Serving {v_dev} at /video{i}')
 
   if len(depthai.Device.getAllAvailableDevices()) > 0:
     ## dai_rgb_pose is complicated enough it owns the device forever, so these endpoints cannot be used anyway
@@ -642,6 +647,7 @@ def main(args=sys.argv):
   server.add_routes([
     aiohttp.web.get('/', http_index_req_handler),
     aiohttp.web.get('/ws', ws_req_handler),
+    aiohttp.web.get('/kill-server', kill_server_handler),
     #aiohttp.web.get('/video', video_feed),
     *video_feeds,
     
