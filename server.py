@@ -11,6 +11,7 @@ import asyncio
 import string
 import re
 import marshal
+import time
 
 # DepthAI config request (from https://github.com/luxonis/depthai/blob/3819aa513f58f2d749e5d5c94953ce1d2fe0a061/depthai_demo.py )
 if platform.machine() == 'aarch64':  # Jetson
@@ -534,6 +535,8 @@ def dai_rgb_pose():
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
     qManager = device.getOutputQueue(name="manager_out", maxSize=4, blocking=False)
 
+    last_rect = ( (0, 0), (1, 1) )
+
     while not exit_flag:
       inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
       cv_img = inRgb.getCvFrame()
@@ -544,18 +547,27 @@ def dai_rgb_pose():
       md = marshal.loads(md)
       print(f'md={md}')
 
-      if md["type"] != 0 and md["lm_score"] > lm_score_thresh:
+      if md["type"] != 0: # and md["lm_score"] > lm_score_thresh:
         x1 = int( (md["rect_center_x"] * frame_size) - md["rect_size"] / 2 )
         y1 = int( (md["rect_center_y"] * frame_size) - md["rect_size"] / 2 )
         x2 = int( (md["rect_center_x"] * frame_size) + md["rect_size"] / 2 )
         y2 = int( (md["rect_center_y"] * frame_size) + md["rect_size"] / 2 )
-        print(f'(x1={x1}, y1={y1}), (x2={x2}, y2={y2})')
-        # Write stuff out!
+        #print(f'(x1={x1}, y1={y1}), (x2={x2}, y2={y2})')
+
+        if (x1 + y1 + x2 + y2) > 0:
+          last_rect = (
+            (min(x1, x2), min(y1, y2)), (max(x1, x2), max(y1, y2))
+          )
+          
+      # Write stuff out!
+      try:
         cv_img = cv2.rectangle(
           cv_img,
-          (x1, y1), (x2, y2),
+          last_rect[0], last_rect[1],
           (255,0,0), 2 # color & width
         )
+      except:
+        traceback.print_exc()
 
       # TODO draw all over cv_img
 
@@ -613,6 +625,11 @@ def main(args=sys.argv):
       subprocess.run([
         'wget', '-O', file, '--inet4-only', url
       ], check=True)
+
+  # Attempt to kill any existing servers
+  for i in range(0, 3):
+    subprocess.run('curl http://127.0.0.1:8000/kill-server'.split(' '), check=False)
+    time.sleep(1)
 
   http_port = 8000
 
