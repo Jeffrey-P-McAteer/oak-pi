@@ -13,6 +13,7 @@ cd /opt/oak-pi
 
 # yay -S python python-pip
 # yay -S opencv python-opencv hdf5
+# yay -S open3d-git python-open3d-git
 python -m server
 
 /home/alarm/.local/bin/omz_downloader
