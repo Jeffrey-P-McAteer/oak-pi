@@ -36,6 +36,10 @@ Backup stored on `/mnt/scratch/oak_pi_dev_mmcblk0`, contains boot wifi & `yay`
 
 # Misc. Research
 
+
+Install `python39` and manually load Open3D wheel file from https://github.com/isl-org/Open3D/releases/tag/v0.15.1
+
+
 https://learnopencv.com/depth-perception-using-stereo-camera-python-c/
 
 https://learnopencv.com/object-detection-with-depth-measurement-with-oak-d/
